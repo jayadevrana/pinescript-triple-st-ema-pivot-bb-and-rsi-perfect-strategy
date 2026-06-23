@@ -1,0 +1,680 @@
+//@version=5
+strategy("triple st ema pivot bb and rsi perfect strategy", overlay = true,process_orders_on_close = true)
+
+ntn= input.int(title='Trades per session', defval=3)-1
+
+
+g_panel = 'Panel Options'
+i_orientation = input.string('Vertical', 'Orientation', options = ['Vertical', 'Horizontal'], group = g_panel)
+i_position = input.string('Bottom Right', 'Position', options = ['Top Left', 'Top Right', 'Top Center', 'Bottom Left', 'Bottom Right', 'Bottom Center', 'Middle Left', 'Middle Right', 'Middle Center'], group = g_panel)
+
+i_border_width = input.int(1, 'Border Width', minval = 0, maxval = 10, group = g_panel, inline = 'border')
+i_color_border = input.color(#000000, '', group = g_panel, inline = 'border')
+
+i_showHeaders = input.bool(true, 'Show Headers', group = g_panel)
+i_color_header_bg = input.color(#96979a, 'Headers Background', group = g_panel, inline = 'header')
+i_color_header_text = input.color(color.white, 'Text', group = g_panel, inline = 'header')
+
+i_color_tf_bg = input.color(#707174, 'Timeframe Background', group = g_panel, inline = 'tf')
+i_color_tf_text = input.color(color.white, 'Text', group = g_panel, inline = 'tf')
+
+i_debug = input.bool(false, 'Display colors palette (debug)', group = g_panel)
+
+// rsi bg colors
+g_rsi = 'RSI Colors'
+i_threshold_ob = input.int(80, 'Overbought Threshold', minval=51, maxval=100, group = g_rsi)
+i_color_ob = input.color(#106c13, 'Overbought Background', inline = 'ob', group = g_rsi)
+i_tcolor_ob = input.color(color.white, 'Text', inline = 'ob', group = g_rsi)
+
+i_threshold_uptrend = input.int(60, 'Uptrend Threshold', minval=51, maxval=100, group = g_rsi)
+i_color_uptrend =  input.color(#519c53, 'Uptrend Background', inline = 'up', group = g_rsi)
+i_tcolor_uptrend = input.color(color.white, 'Text', inline = 'up', group = g_rsi)
+
+i_color_mid =  input.color(#4f525b, 'No Trend Background', group = g_rsi, inline = 'mid')
+i_tcolor_mid = input.color(#b2b5be, 'Text', group = g_rsi, inline = 'mid')
+
+i_threshold_downtrend = input.int(40, 'Downtrend Threshold', group = g_rsi, minval=0, maxval=49)
+i_color_downtrend =  input.color(#b83131, 'Downtrend Background', group = g_rsi, inline = 'down')
+i_tcolor_downtrend = input.color(color.white, 'Text', group = g_rsi, inline = 'down')
+
+i_threshold_os = input.int(25, 'Oversold Threshold', minval=0, maxval=49, group = g_rsi)
+i_color_os =  input.color(#792d33, 'Oversold Background', group = g_rsi, inline = 'os')
+i_tcolor_os = input.color(color.white, 'Text', group = g_rsi, inline = 'os')
+
+
+
+
+g_rsi1 = 'RSI #1'
+i_rsi1_enabled = input.bool(true, title = 'Enabled', group = g_rsi1)
+i_rsi1_tf = input.timeframe('5', 'Timeframe', group = g_rsi1)
+i_rsi1_len = input.int(14, 'Length', minval = 1, group = g_rsi1)
+i_rsi1_src = input.source(close, 'Source', group = g_rsi1) * 10000
+v_rsi1 = i_rsi1_enabled ? request.security(syminfo.tickerid, i_rsi1_tf, ta.rsi(i_rsi1_src, i_rsi1_len)) : na
+
+g_rsi2 = 'RSI #2'
+i_rsi2_enabled = input.bool(true, title = 'Enabled', group = g_rsi2)
+i_rsi2_tf = input.timeframe('15', 'Timeframe', group = g_rsi2)
+i_rsi2_len = input.int(14, 'Length', minval = 1, group = g_rsi2)
+i_rsi2_src = input.source(close, 'Source', group = g_rsi2) * 10000
+v_rsi2 = i_rsi2_enabled ? request.security(syminfo.tickerid, i_rsi2_tf, ta.rsi(i_rsi2_src, i_rsi2_len)) : na
+
+g_rsi3 = 'RSI #3'
+i_rsi3_enabled = input.bool(true, title = 'Enabled', group = g_rsi3)
+i_rsi3_tf = input.timeframe('60', 'Timeframe', group = g_rsi3)
+i_rsi3_len = input.int(14, 'Length', minval = 1, group = g_rsi3)
+i_rsi3_src = input.source(close, 'Source', group = g_rsi3) * 10000
+v_rsi3 = i_rsi3_enabled ? request.security(syminfo.tickerid, i_rsi3_tf, ta.rsi(i_rsi3_src, i_rsi3_len)) : na
+
+g_rsi4 = 'RSI #4'
+i_rsi4_enabled = input.bool(true, title = 'Enabled', group = g_rsi4)
+i_rsi4_tf = input.timeframe('240', 'Timeframe', group = g_rsi4)
+i_rsi4_len = input.int(14, 'Length', minval = 1, group = g_rsi4)
+i_rsi4_src = input.source(close, 'Source', group = g_rsi4) * 10000
+v_rsi4 = i_rsi4_enabled ? request.security(syminfo.tickerid, i_rsi4_tf, ta.rsi(i_rsi4_src, i_rsi4_len)) : na
+
+g_rsi5 = 'RSI #5'
+i_rsi5_enabled = input.bool(true, title = 'Enabled', group = g_rsi5)
+i_rsi5_tf = input.timeframe('D', 'Timeframe', group = g_rsi5)
+i_rsi5_len = input.int(14, 'Length', minval = 1, group = g_rsi5)
+i_rsi5_src = input.source(close, 'Source', group = g_rsi5) * 10000
+v_rsi5 = i_rsi5_enabled ? request.security(syminfo.tickerid, i_rsi5_tf, ta.rsi(i_rsi5_src, i_rsi5_len)) : na
+
+
+
+
+f_StrPositionToConst(_p) =>
+    switch _p
+        'Top Left' => position.top_left
+        'Top Right' => position.top_right
+        'Top Center' => position.top_center
+        'Bottom Left' => position.bottom_left
+        'Bottom Right' => position.bottom_right
+        'Bottom Center' => position.bottom_center
+        => position.bottom_right
+
+
+f_timeframeToHuman(_tf) =>
+    seconds = timeframe.in_seconds(_tf)
+
+    if seconds < 60
+        _tf
+    else if seconds < 3600
+        str.tostring(seconds / 60) + 'm'
+    else if seconds < 86400
+        str.tostring(seconds / 60 / 60) + 'h'
+    else
+        switch _tf
+            "1D" => "D"
+            "1W" => "W"
+            "1M" => "M"
+            => str.tostring(_tf)
+
+
+type TPanel
+    table src = na
+    bool vertical_orientation = true
+    int row = 0
+    int col = 0
+
+method incCol(TPanel _panel) =>
+    if _panel.vertical_orientation
+        _panel.col += 1
+    else
+        _panel.row += 1
+
+method incRow(TPanel _panel) =>
+    if not _panel.vertical_orientation
+        _panel.col += 1
+        _panel.row := 0
+    else
+        _panel.row += 1
+        _panel.col := 0
+
+method add(TPanel _panel, string _v1, color _bg1, color _ctext1, string _v2, color _bg2, color _ctext2) =>
+    table.cell(_panel.src, _panel.col, _panel.row, _v1, text_color = _ctext1, bgcolor = _bg1)
+    _panel.incCol()
+
+    table.cell(_panel.src, _panel.col, _panel.row, _v2, text_color = _ctext2, bgcolor = _bg2)
+    _panel.incRow()
+
+
+
+f_bg(_rsi) =>
+    c_line = na(_rsi) ? i_color_mid :
+      _rsi >= i_threshold_ob ? i_color_ob :
+      _rsi >= i_threshold_uptrend ? i_color_uptrend :
+
+      _rsi <= i_threshold_os ? i_color_os :
+      _rsi <= i_threshold_downtrend ? i_color_downtrend :
+
+      i_color_mid
+
+f_rsi_text_color(_rsi) =>
+    c_line = na(_rsi) ? i_tcolor_mid :
+      _rsi >= i_threshold_ob ? i_tcolor_ob :
+      _rsi >= i_threshold_uptrend ? i_tcolor_uptrend :
+
+      _rsi <= i_threshold_os ? i_tcolor_os :
+      _rsi <= i_threshold_downtrend ? i_tcolor_downtrend :
+
+      i_tcolor_mid
+
+f_formatRsi(_rsi) => na(_rsi) ? 'N/A' : str.tostring(_rsi, '0.00')
+
+
+if barstate.isconfirmed
+
+    v_panel = TPanel.new(vertical_orientation = i_orientation == 'Vertical')
+    v_max_rows = 20
+    v_panel.src := table.new(f_StrPositionToConst(i_position), v_max_rows, v_max_rows, border_width = i_border_width, border_color = i_color_border)
+
+    if i_showHeaders
+        v_panel.add('TF', i_color_header_bg, i_color_header_text, 'RSI', i_color_header_bg, i_color_header_text)
+
+    if i_rsi1_enabled
+        v_panel.add(f_timeframeToHuman(i_rsi1_tf), i_color_tf_bg, i_color_tf_text, f_formatRsi(v_rsi1), f_bg(v_rsi1), f_rsi_text_color(v_rsi1))
+    if i_rsi2_enabled
+        v_panel.add(f_timeframeToHuman(i_rsi2_tf), i_color_tf_bg, i_color_tf_text, f_formatRsi(v_rsi2), f_bg(v_rsi2), f_rsi_text_color(v_rsi2))
+    if i_rsi3_enabled
+        v_panel.add(f_timeframeToHuman(i_rsi3_tf), i_color_tf_bg, i_color_tf_text, f_formatRsi(v_rsi3), f_bg(v_rsi3), f_rsi_text_color(v_rsi3))
+    if i_rsi4_enabled
+        v_panel.add(f_timeframeToHuman(i_rsi4_tf), i_color_tf_bg, i_color_tf_text, f_formatRsi(v_rsi4), f_bg(v_rsi4), f_rsi_text_color(v_rsi4))
+    if i_rsi5_enabled
+        v_panel.add(f_timeframeToHuman(i_rsi5_tf), i_color_tf_bg, i_color_tf_text, f_formatRsi(v_rsi5), f_bg(v_rsi5), f_rsi_text_color(v_rsi5))
+    
+    
+
+
+    if i_debug
+        t = table.new(position.middle_center, 21, 20, border_width = i_border_width, border_color = i_color_border)
+        v_panel2 = TPanel.new(t, vertical_orientation = i_orientation == 'Vertical')
+
+        v_panel2.add('Debug', i_color_header_bg, i_color_header_text, 'Colors', i_color_header_bg, i_color_header_text)
+
+        demo = map.new<string, float>()
+        map.put(demo, 'Overbought', i_threshold_ob)
+        map.put(demo, 'Uptrend', i_threshold_uptrend)
+        map.put(demo, 'No Trend', 50)
+        map.put(demo, 'Downtrend', i_threshold_downtrend)
+        map.put(demo, 'Oversold', i_threshold_os)
+
+        demoKeys = map.keys(demo)
+        for key in demoKeys
+            tf = key
+            rsi = map.get(demo, key)
+            v_panel2.add(tf, i_color_tf_bg, i_color_tf_text, f_formatRsi(rsi), f_bg(rsi), f_rsi_text_color(rsi))
+
+nt= input.int(title='target per session', defval=1)
+
+// First Super Trend (20,6)
+atrPeriod1 = input.int(20, "ATR Length Second Super Trend", minval = 1)
+factor1 = input.float(6.0, "Factor First Super Trend", minval = 0.01, step = 0.01)
+[supertrend1, direction1] = ta.supertrend(factor1, atrPeriod1)
+supertrend1 := barstate.isfirst ? na : supertrend1
+upTrend1 = plot(direction1 < 0 ? supertrend1 : na, "Up Trend First Super Trend", color = color.rgb(21, 174, 121), style = plot.style_linebr,linewidth = 3)
+downTrend1 = plot(direction1 < 0 ? na : supertrend1, "Down Trend First Super Trend", color = color.rgb(244, 54, 54, 9), style = plot.style_linebr, linewidth = 3)
+
+// Second Super Trend (10,3)
+atrPeriod2 = input.int(10, "ATR Length Second Super Trend", minval = 1)
+factor2 = input.float(3.0, "Factor Second Super Trend", minval = 0.01, step = 0.01)
+[supertrend2, direction2] = ta.supertrend(factor2, atrPeriod2)
+supertrend2 := barstate.isfirst ? na : supertrend2
+upTrend2 = plot(direction2 < 0 ? supertrend2 : na, "Up Trend Second Super Trend", color = color.green, style = plot.style_linebr, linewidth = 2)
+downTrend2 = plot(direction2 < 0 ? na : supertrend2, "Down Trend Second Super Trend", color = color.red, style = plot.style_linebr, linewidth = 2)
+
+
+
+
+// EMA 200
+ema200 = ta.ema(close, 200)
+plot(ema200, "EMA 200", color=color.rgb(162, 33, 10),linewidth = 3)
+
+
+
+// Filling
+bodyMiddle = plot(barstate.isfirst ? na : (open + close) / 2, "Body Middle", display = display.none)
+fill(bodyMiddle, upTrend1, color.new(color.green, 90), fillgaps = false)
+fill(bodyMiddle, downTrend1, color.new(color.red, 90), fillgaps = false)
+fill(bodyMiddle, upTrend2, color.new(#abf48a, 90), fillgaps = false)
+fill(bodyMiddle, downTrend2, color.new(#f0bc4b, 90), fillgaps = false)
+
+
+
+
+
+pivotTypeInput = input.string(title="Type", defval="Traditional", options=["Traditional", "Fibonacci", "Woodie", "Classic", "DM", "Camarilla"])
+pivotAnchorInput = input.string(title="Pivots Timeframe", defval="Auto", options=["Auto", "Daily", "Weekly", "Monthly", "Quarterly", "Yearly", "Biyearly", "Triyearly", "Quinquennially", "Decennially"])
+maxHistoricalPivotsInput = input.int(title="Number of Pivots Back", defval=15, minval=1, maxval=200, display = display.data_window)
+isDailyBasedInput = input.bool(title="Use Daily-based Values", defval=true, display = display.data_window, tooltip="When this option is unchecked, Pivot Points will use intraday data while calculating on intraday charts. If Extended Hours are displayed on the chart, they will be taken into account during the pivot level calculation. If intraday OHLC values are different from daily-based values (normal for stocks), the pivot levels will also differ.")
+showLabelsInput = input.bool(title="Show Labels", defval=true, group="labels", display = display.data_window)
+showPricesInput = input.bool(title="Show Prices", defval=true, group="labels", display = display.data_window)
+positionLabelsInput = input.string("Left", "Labels Position", options=["Left", "Right"], group="labels", display = display.data_window)
+linewidthInput = input.int(title="Line Width", defval=1, minval=1, maxval=100, group="levels", display = display.data_window)
+
+DEFAULT_COLOR = #FB8C00
+pColorInput = input.color(DEFAULT_COLOR, "P‏  ‏  ‏", inline="P", group="levels", display = display.data_window)
+pShowInput = input.bool(true, "", inline="P", group="levels", display = display.data_window)
+s1ColorInput = input.color(DEFAULT_COLOR, "S1", inline="S1/R1" , group="levels", display = display.data_window)
+s1ShowInput = input.bool(true, "", inline="S1/R1", group="levels", display = display.data_window)
+r1ColorInput = input.color(DEFAULT_COLOR, "‏  ‏  ‏  ‏  ‏  ‏  ‏  ‏R1", inline="S1/R1", group="levels", display = display.data_window)
+r1ShowInput = input.bool(true, "", inline="S1/R1", group="levels", display = display.data_window)
+s2ColorInput = input.color(DEFAULT_COLOR, "S2", inline="S2/R2", group="levels", display = display.data_window)
+s2ShowInput = input.bool(true, "", inline="S2/R2", group="levels", display = display.data_window)
+r2ColorInput = input.color(DEFAULT_COLOR, "‏  ‏  ‏  ‏  ‏  ‏  ‏  ‏R2", inline="S2/R2", group="levels", display = display.data_window)
+r2ShowInput = input.bool(true, "", inline="S2/R2", group="levels", tooltip = "Not applicable to DM", display = display.data_window)
+s3ColorInput = input.color(DEFAULT_COLOR, "S3", inline="S3/R3", group="levels", display = display.data_window)
+s3ShowInput = input.bool(true, "", inline="S3/R3", group="levels", display = display.data_window)
+r3ColorInput = input.color(DEFAULT_COLOR, "‏  ‏  ‏  ‏  ‏  ‏  ‏  ‏R3", inline="S3/R3", group="levels", display = display.data_window)
+r3ShowInput = input.bool(true, "", inline="S3/R3", group="levels", tooltip = "Not applicable to DM", display = display.data_window)
+s4ColorInput = input.color(DEFAULT_COLOR, "S4", inline="S4/R4", group="levels", display = display.data_window)
+s4ShowInput = input.bool(true, "", inline="S4/R4", group="levels", display = display.data_window)
+r4ColorInput = input.color(DEFAULT_COLOR, "‏  ‏  ‏  ‏  ‏  ‏  ‏  ‏R4", inline="S4/R4", group="levels", display = display.data_window)
+r4ShowInput = input.bool(true, "", inline="S4/R4", group="levels", tooltip = "Not applicable to: Fibonacci, DM", display = display.data_window)
+s5ColorInput = input.color(DEFAULT_COLOR, "S5", inline="S5/R5", group="levels", display = display.data_window)
+s5ShowInput = input.bool(true, "", inline="S5/R5", group="levels", display = display.data_window)
+r5ColorInput = input.color(DEFAULT_COLOR, "‏  ‏  ‏  ‏  ‏  ‏  ‏  ‏R5", inline="S5/R5", group="levels", display = display.data_window)
+r5ShowInput = input.bool(true, "", inline="S5/R5", group="levels", tooltip = "Not applicable to: Fibonacci, Woodie, Classic, DM", display = display.data_window)
+
+type graphicSettings
+    string levelName
+    color levelColor
+    bool showLevel
+
+var graphicSettingsArray = array.from(
+      graphicSettings.new(" P", pColorInput, pShowInput),
+      graphicSettings.new("R1", r1ColorInput, r1ShowInput), graphicSettings.new("S1", s1ColorInput, s1ShowInput),
+      graphicSettings.new("R2", r2ColorInput, r2ShowInput), graphicSettings.new("S2", s2ColorInput, s2ShowInput),
+      graphicSettings.new("R3", r3ColorInput, r3ShowInput), graphicSettings.new("S3", s3ColorInput, s3ShowInput),
+      graphicSettings.new("R4", r4ColorInput, r4ShowInput), graphicSettings.new("S4", s4ColorInput, s4ShowInput),
+      graphicSettings.new("R5", r5ColorInput, r5ShowInput), graphicSettings.new("S5", s5ColorInput, s5ShowInput))
+
+autoAnchor = switch
+    timeframe.isintraday => timeframe.multiplier <= 15 ? "1D" : "1W"
+    timeframe.isdaily    => "1M"
+    => "12M"
+
+pivotTimeframe = switch pivotAnchorInput
+    "Auto"      => autoAnchor
+    "Daily"     => "1D"
+    "Weekly"    => "1W"
+    "Monthly"   => "1M"
+    "Quarterly" => "3M"
+    => "12M"
+
+//@variable The number of years in the selected Pivot period
+pivotYearMultiplier = switch pivotAnchorInput
+    "Biyearly"       => 2
+    "Triyearly"      => 3
+    "Quinquennially" => 5
+    "Decennially"    => 10
+    => 1
+
+//@variable The number of values in the pivots of the selected type
+numOfPivotLevels = switch pivotTypeInput
+    "Traditional" => 11
+    "Camarilla"   => 11
+    "Woodie"      => 9
+    "Classic"     => 9
+    "Fibonacci"   => 7
+    "DM"          => 3
+
+type pivotGraphic
+    line pivotLine
+    label pivotLabel
+
+method delete(pivotGraphic graphic) =>
+    graphic.pivotLine.delete()
+    graphic.pivotLabel.delete()
+
+var drawnGraphics = matrix.new<pivotGraphic>()
+
+localPivotTimeframeChange = timeframe.change(pivotTimeframe) and year % pivotYearMultiplier == 0
+securityPivotTimeframeChange = timeframe.change(timeframe.period) and year % pivotYearMultiplier == 0
+
+pivotTimeframeChangeCounter(condition) => 
+    var count = 0
+    if condition and bar_index > 0
+        count += 1
+    count
+
+localPivots = ta.pivot_point_levels(pivotTypeInput, localPivotTimeframeChange)
+securityPivotPointsArray = ta.pivot_point_levels(pivotTypeInput, securityPivotTimeframeChange)
+
+securityTimeframe = timeframe.isintraday ? "1D" : timeframe.period
+[securityPivots, securityPivotCounter] = request.security(syminfo.tickerid, pivotTimeframe, [securityPivotPointsArray, pivotTimeframeChangeCounter(securityPivotTimeframeChange)], lookahead = barmerge.lookahead_on)
+pivotPointsArray = isDailyBasedInput ? securityPivots : localPivots
+
+//@function Sets the ending points of the currently active pivots to `endTime`.
+affixOldPivots(endTime) =>
+    if drawnGraphics.rows() > 0
+        lastGraphics = drawnGraphics.row(drawnGraphics.rows() - 1)
+
+        for graphic in lastGraphics
+            graphic.pivotLine.set_x2(endTime)
+            if positionLabelsInput == "Right"
+                graphic.pivotLabel.set_x(endTime)
+
+//@function Draws pivot lines and labels from `startTime` to the approximate end of the period.
+drawNewPivots(startTime) =>
+    
+    newGraphics = array.new<pivotGraphic>()
+
+    for [index, coord] in pivotPointsArray
+        levelSettings = graphicSettingsArray.get(index)
+        if not na(coord) and levelSettings.showLevel
+            lineEndTime = startTime + timeframe.in_seconds(pivotTimeframe) * 1000 * pivotYearMultiplier
+            pivotLine = line.new(startTime, coord, lineEndTime, coord, xloc = xloc.bar_time, color=levelSettings.levelColor, width=linewidthInput)
+            pivotLabel = label.new(x = positionLabelsInput == "Left" ? startTime : lineEndTime,
+                               y = coord,
+                               text = (showLabelsInput ? levelSettings.levelName + " " : "") + (showPricesInput ? "(" + str.tostring(coord, format.mintick) + ")" : ""),
+                               style = positionLabelsInput == "Left" ? label.style_label_right : label.style_label_left,
+                               textcolor = levelSettings.levelColor,
+                               color = #00000000,
+                               xloc=xloc.bar_time)
+            
+            newGraphics.push(pivotGraphic.new(pivotLine, pivotLabel))
+    
+    drawnGraphics.add_row(array_id = newGraphics)
+
+    if drawnGraphics.rows() > maxHistoricalPivotsInput
+        oldGraphics = drawnGraphics.remove_row(0)
+        
+        for graphic in oldGraphics
+            graphic.delete()
+
+
+localPivotDrawConditionStatic = not isDailyBasedInput and localPivotTimeframeChange
+securityPivotDrawConditionStatic = isDailyBasedInput and securityPivotCounter != securityPivotCounter[1]
+
+var isMultiYearly = array.from("Biyearly", "Triyearly", "Quinquennially", "Decennially").includes(pivotAnchorInput)
+localPivotDrawConditionDeveloping = not isDailyBasedInput and time_close == time_close(pivotTimeframe) and not isMultiYearly 
+securityPivotDrawConditionDeveloping = false
+
+if (securityPivotDrawConditionStatic or localPivotDrawConditionStatic)
+    affixOldPivots(time)
+    drawNewPivots(time)
+
+// If possible, draw pivots from the beginning of the chart if none were found
+var FIRST_BAR_TIME = time
+if (barstate.islastconfirmedhistory and drawnGraphics.columns() == 0)
+
+    if not na(securityPivots) and securityPivotCounter > 0
+        if isDailyBasedInput
+            drawNewPivots(FIRST_BAR_TIME)
+        else 
+            runtime.error("Not enough intraday data to calculate Pivot Points. Lower the Pivots Timeframe or turn on the 'Use Daily-based Values' option in the indicator settings.")
+    else
+        runtime.error("Not enough data to calculate Pivot Points. Lower the Pivots Timeframe in the indicator settings.")
+
+
+
+
+
+
+
+higherTF = input.timeframe('D', group='Pivot Settings')
+OPENprev = request.security(syminfo.tickerid, higherTF, open[1], lookahead=barmerge.lookahead_on)
+HIGHprev = request.security(syminfo.tickerid, higherTF, high[1], lookahead=barmerge.lookahead_on)
+LOWprev = request.security(syminfo.tickerid, higherTF, low[1], lookahead=barmerge.lookahead_on)
+CLOSEprev = request.security(syminfo.tickerid, higherTF, close[1], lookahead=barmerge.lookahead_on)
+OPENcurr = request.security(syminfo.tickerid, higherTF, open, lookahead=barmerge.lookahead_on)
+// initiating variables
+float PP = na
+float R1 = na
+float R2 = na
+float R3 = na
+float R4 = na
+float R5 = na
+float S1 = na
+float S2 = na
+float S3 = na
+float S4 = na
+float S5 = na
+float X = na
+
+type = input.string('Traditional', 'Pivot Type', options=['Traditional', 'Fibonacci', 'Woodie', 'Classic', 'Demark', 'Camarilla'], group='Pivot Settings')
+if type == 'Traditional'
+    PP := (HIGHprev + LOWprev + CLOSEprev) / 3
+    R1 := PP * 2 - LOWprev
+    S1 := PP * 2 - HIGHprev
+    R2 := PP + HIGHprev - LOWprev
+    S2 := PP - (HIGHprev - LOWprev)
+    R3 := PP * 2 + HIGHprev - 2 * LOWprev
+    S3 := PP * 2 - (2 * HIGHprev - LOWprev)
+    R4 := PP * 3 + HIGHprev - 3 * LOWprev
+    S4 := PP * 3 - (3 * HIGHprev - LOWprev)
+    R5 := PP * 4 + HIGHprev - 4 * LOWprev
+    S5 := PP * 4 - (4 * HIGHprev - LOWprev)
+    S5
+else if type == 'Fibonacci'
+    PP := (HIGHprev + LOWprev + CLOSEprev) / 3
+    R1 := PP + 0.382 * (HIGHprev - LOWprev)
+    S1 := PP - 0.382 * (HIGHprev - LOWprev)
+    R2 := PP + 0.618 * (HIGHprev - LOWprev)
+    S2 := PP - 0.618 * (HIGHprev - LOWprev)
+    R3 := PP + HIGHprev - LOWprev
+    S3 := PP - (HIGHprev - LOWprev)
+    S3
+else if type == 'Woodie'
+    PP := (HIGHprev + LOWprev + 2 * OPENcurr) / 4
+    R1 := 2 * PP - LOWprev
+    S1 := 2 * PP - HIGHprev
+    R2 := PP + HIGHprev - LOWprev
+    S2 := PP - (HIGHprev - LOWprev)
+    R3 := HIGHprev + 2 * (PP - LOWprev)
+    S3 := LOWprev - 2 * (HIGHprev - PP)
+    R4 := R3 + HIGHprev - LOWprev
+    S4 := S3 - (HIGHprev - LOWprev)
+    S4
+else if type == 'Classic'
+    PP := (HIGHprev + LOWprev + CLOSEprev) / 3
+    R1 := 2 * PP - LOWprev
+    S1 := 2 * PP - HIGHprev
+    R2 := PP + HIGHprev - LOWprev
+    S2 := PP - (HIGHprev - LOWprev)
+    R3 := PP + 2 * (HIGHprev - LOWprev)
+    S3 := PP - 2 * (HIGHprev - LOWprev)
+    R4 := PP + 3 * (HIGHprev - LOWprev)
+    S4 := PP - 3 * (HIGHprev - LOWprev)
+    S4
+else if type == 'Demark'
+    if OPENprev == CLOSEprev
+        X := HIGHprev + LOWprev + 2 * CLOSEprev
+        X
+    else if CLOSEprev > OPENprev
+        X := 2 * HIGHprev + LOWprev + CLOSEprev
+        X
+    else
+        X := 2 * LOWprev + HIGHprev + CLOSEprev
+        X
+    PP := X / 4
+    R1 := X / 2 - LOWprev
+    S1 := X / 2 - HIGHprev
+    S1
+else if type == 'Camarilla'
+    PP := (HIGHprev + LOWprev + CLOSEprev) / 3
+    R1 := CLOSEprev + 1.1 * (HIGHprev - LOWprev) / 12
+    S1 := CLOSEprev - 1.1 * (HIGHprev - LOWprev) / 12
+    R2 := CLOSEprev + 1.1 * (HIGHprev - LOWprev) / 6
+    S2 := CLOSEprev - 1.1 * (HIGHprev - LOWprev) / 6
+    R3 := CLOSEprev + 1.1 * (HIGHprev - LOWprev) / 4
+    S3 := CLOSEprev - 1.1 * (HIGHprev - LOWprev) / 4
+    R4 := CLOSEprev + 1.1 * (HIGHprev - LOWprev) / 2
+    S4 := CLOSEprev - 1.1 * (HIGHprev - LOWprev) / 2
+    S4
+
+// plot(PP == PP[1] ? PP : na, 'Central Pivot', color=color.new(#171b02, 11), style=plot.style_linebr, linewidth=2)
+// plot(R1 == R1[1] ? R1 : na, 'R1', color=#a6c110, style=plot.style_linebr, linewidth=2)
+// plot(R2 == R2[1] ? R2 : na, 'R2', color=#a6c110, style=plot.style_linebr, linewidth=2)
+// plot(R3 == R3[1] ? R3 : na, 'R3', color=#a6c110, style=plot.style_linebr, linewidth=2)
+// plot(R4 == R4[1] ? R4 : na, 'R4', color=#a6c110, style=plot.style_linebr, linewidth=2)
+// plot(R5 == R5[1] ? R5 : na, 'R5', color=#a6c110, style=plot.style_linebr, linewidth=2)
+// plot(S1 == S1[1] ? S1 : na, 'S1', color=color.new(#ea904c, 0), style=plot.style_linebr, linewidth=2)
+// plot(S2 == S2[1] ? S2 : na, 'S2', color=color.new(#ea904c, 0), style=plot.style_linebr, linewidth=2)
+// plot(S3 == S3[1] ? S3 : na, 'S3', color=color.new(#ea904c, 0), style=plot.style_linebr, linewidth=2)
+// plot(S4 == S4[1] ? S4 : na, 'S4', color=color.new(#ea904c, 0), style=plot.style_linebr, linewidth=2)
+// plot(S5 == S5[1] ? S5 : na, 'S5', color=color.new(#ea904c, 0), style=plot.style_linebr, linewidth=2)
+
+buy = (ta.crossover(close,S1) or ta.crossover(close,S2) or ta.crossover(close,S3) or ta.crossover(close,S4) or ta.crossover(close,S5) or ta.crossover(close,R1) or ta.crossover(close,R2) or ta.crossover(close,R3) or ta.crossover(close,R4) or ta.crossover(close,R5) or ta.crossover(close,PP)) and direction1 < 0 and direction2 < 0 and close > ema200 and v_rsi2 > 60 and v_rsi3 > 60
+sell = (ta.crossunder(close,S1) or ta.crossunder(close,S2) or ta.crossunder(close,S3) or ta.crossunder(close,S4) or ta.crossunder(close,S5) or ta.crossunder(close,R1) or ta.crossunder(close,R2) or ta.crossunder(close,R3) or ta.crossunder(close,R4) or ta.crossunder(close,R5) or ta.crossunder(close,PP))  and direction1 > 0 and direction2 > 0 and close < ema200 and v_rsi2 < 60 and v_rsi3 < 60
+
+b = strategy.position_size > 0 and strategy.position_size[1] == 0
+s = strategy.position_size < 0 and strategy.position_size[1] == 0
+
+var count = 0
+count :=  ta.change(time ('D')) ? 0 : b or s ? count + 1 : count
+
+ltp_hit = (b or s) and count <= ntn
+
+//plotshape(count <= ntn)
+
+// plotshape(buy0,color=color.new(color.green, 0), style=shape.labelup, text='Buy Alert', textcolor=color.new(color.white, 0), location=location.belowbar, size=size.normal)
+// plotshape(sell0 , color=color.new(color.red, 0), style=shape.labeldown, text='Sell Alert', textcolor=color.new(color.white, 0), location=location.abovebar, size=size.normal)
+
+
+ 
+
+
+use_sl = input(true, title='Use Candle High/Low as SL')
+sl_buffer = input(2.00)
+
+Stop = input(2.0, title='StopLoss')
+ProfitPerc = input(defval=250.0, title='TARGET')
+
+
+
+long_short = 0
+long_last = buy and (nz(long_short[1]) == 0 or nz(long_short[1]) == -1)
+short_last = sell and (nz(long_short[1]) == 0 or nz(long_short[1]) == 1)
+long_short := long_last ? 1 : short_last ? -1 : long_short[1]
+
+long_entered = false
+long_entered := long_entered[1]
+
+short_entered = false
+short_entered := short_entered[1]
+
+
+// var count = 0
+// count :=  ta.change(time ('D')) ? 0 : (strategy.position_size > 0 and strategy.position_size[1] < 1) or (strategy.position_size < 0 and strategy.position_size[1] > 1) ? count + 1 : count
+
+// ltp_hit = ((strategy.position_size > 0 and strategy.position_size[1] < 1) or (strategy.position_size < 0 and strategy.position_size[1] > 1)) and count <= nt
+// plotshape(count <= nt)
+// if not (count[1] <= nt)
+//     buy := false
+//     sell := false
+
+// if ta.change(time ('D'))
+//     count := 0
+
+atrPeriod = input.int(10,    "Trailing STR Length", minval = 1)
+factor =    input.float(1.1, "Trailing Factor",     minval = 0.01, step = 0.01)
+
+[supertrend, direction] = ta.supertrend(factor, atrPeriod)
+
+supertrend := barstate.isfirst ? na : supertrend
+upTrend =    plot(direction < 0 ? supertrend : na, "Up Trend",   color = color.green, style = plot.style_linebr)
+downTrend =  plot(direction < 0 ? na : supertrend, "Down Trend", color = color.red,   style = plot.style_linebr)
+
+if strategy.position_size > 0 and (direction > 0 and direction[1] < 0)
+    strategy.close_all('TSL HIT')
+
+if strategy.position_size < 0 and (direction < 0 and direction[1] > 0)
+    strategy.close_all('TSL HIT')
+
+longPrice = ta.valuewhen(buy and not long_entered, close, 0)
+
+
+shortPrice = ta.valuewhen(sell and not short_entered, close, 0)
+
+
+
+longStop = use_sl ? longPrice : longPrice - Stop
+shortStop = use_sl ? shortPrice : shortPrice + Stop
+
+if use_sl
+    longStop := ta.valuewhen(buy and not long_entered, low, 0) - sl_buffer
+    shortStop := ta.valuewhen(sell and not short_entered, high, 0) + sl_buffer
+    shortStop
+
+longTake = longPrice + ProfitPerc
+shortTake = shortPrice - ProfitPerc
+
+plot(long_short == 1 ? longStop : na, style=plot.style_linebr, color=#900a15e6, linewidth=3, title='Long Fixed SL')
+plot(long_short == -1 ? shortStop : na, style=plot.style_linebr, color=#900a15e6, linewidth=3, title='Short Fixed SL')
+plot(long_short == 1 ? longTake : na, style=plot.style_linebr, color=color.new(#0872f4, 0), linewidth=3, title='Long Fixed TP')
+plot(long_short == -1 ? shortTake : na, style=plot.style_linebr, color=color.new(#0872f4, 0), linewidth=3, title='Short Fixed TP')
+
+
+longBar1 = ta.barssince(long_last)
+longBar2 = longBar1 >= 0 ? true : false
+shortBar1 = ta.barssince(short_last)
+shortBar2 = shortBar1 >= 0 ? true : false
+
+longSLhit = long_short == 1 and longBar2 and low < longStop
+
+//if(long_entered and  sellSignal)
+    //longSLhit := true
+
+plotshape(longSLhit and not(sell and not short_entered and long_entered), style=shape.xcross, location=location.belowbar, color=#24ad56, size=size.normal, title='Stop Loss', text='Long SL', textcolor=#ebc2c2)
+shortSLhit = long_short == -1 and shortBar2 and high > shortStop
+
+
+//if(short_entered and buySignal)
+    //shortSLhit := true
+
+plotshape(shortSLhit and not(buy and not long_entered and short_entered), style=shape.xcross, location=location.abovebar, color=color.new(#c71515, 0), size=size.normal, title='Stop Loss', text='Short SL', textcolor=#ebc2c2)
+
+
+longTPhit = long_short == 1 and longBar2 and high > longTake
+plotshape(longTPhit, style=shape.flag, location=location.abovebar, color=color.new(#0872f4, 0), size=size.normal, title='Target', text='Long TP', textcolor=color.new(color.white, 0))
+shortTPhit = long_short == -1 and shortBar2 and low < shortTake
+plotshape(shortTPhit, style=shape.flag, location=location.belowbar, color=color.new(#0872f4, 0), size=size.normal, title='Target', text='Short TP', textcolor=color.new(color.white, 0))
+
+long_short := (long_short == 1 or long_short == 0) and longBar2 and (longSLhit or longTPhit) ? 0 : (long_short == -1 or long_short == 0) and shortBar2 and (shortSLhit or shortTPhit) ? 0 : long_short
+
+
+plotshape(buy and not long_entered, color=color.new(color.green, 0), style=shape.labelup, text='Buy', textcolor=color.rgb(232, 240, 234, 7), location=location.belowbar)
+plotshape(sell and not short_entered, color=color.new(color.red, 0), style=shape.labeldown, text='Sell', textcolor=color.rgb(251, 247, 243), location=location.abovebar)
+
+if(buy and not long_entered) and count <= ntn
+    strategy.entry("buy",strategy.long,comment ='buy ' + str.tostring(longPrice,"#.##") +'\n sl '+str.tostring(longStop,"#")+'\n tsl '+str.tostring(supertrend,"#")+'\n tp '+str.tostring(longTake,"#"))
+    strategy.exit("Stop","buy",limit = longTake,stop = longStop) 
+    
+if(sell and not short_entered) and count <= ntn
+    strategy.entry("sell",strategy.short,comment ='buy ' + str.tostring(shortPrice,"#.##") +'\n sl '+str.tostring(shortStop,"#")+'\n tsl '+str.tostring(supertrend,"#")+'\n tp '+str.tostring(shortTake,"#"))
+    strategy.exit("Stop","sell",limit = shortTake,stop = shortStop) 
+
+// plotshape(buy and not(long_entered) and (short_entered), color = color.green , style = shape.labelup , text = "FA Buy" , textcolor = color.white , location = location.belowbar)
+// plotshape(sell and not(short_entered)  and (long_entered), color = color.red , style = shape.labeldown , text = "FA Sell" , textcolor = color.white , location = location.abovebar)
+
+
+// alertcondition(condition=buy and  not(long_entered)  and (short_entered), title="Fully Algo Buy")
+// alertcondition(condition=sell and  not(short_entered)  and (long_entered), title="Fully Algo sell")
+
+alertcondition(condition=buy and not long_entered, title='Buy')
+alertcondition(condition=sell and not short_entered, title='Sell')
+
+if long_last
+    long_entered := true
+    short_entered := false
+    short_entered
+if short_last
+    short_entered := true
+    long_entered := false
+    long_entered
+
+alertcondition(condition=(longSLhit or shortSLhit) and not(sell and not short_entered and long_entered), title='Long/Short SL')
+//alertcondition(condition= shortSLhit and not (buy and  not(long_entered)  and (short_entered)), title="Short SL")
+
+alertcondition(condition=longTPhit or shortTPhit, title='Long/short TP')
+//alertcondition(condition=shortTPhit, title="Short TP")
+
+if longSLhit or longTPhit
+    long_entered := false
+    long_entered
+
+if shortSLhit or shortTPhit
+    short_entered := false
+    short_entered
+
